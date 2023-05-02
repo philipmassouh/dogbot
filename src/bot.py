@@ -7,12 +7,11 @@ youtube_dl.utils.bug_reports_message = lambda: ""
 TOKEN, __GUILD = open("secrets.csv", "r").readlines()
 
 
-
 class MyBot(commands.Bot):
     def __init__(self):
-        super().__init__(command_prefix='!', intents=discord.Intents.all())
+        super().__init__(command_prefix="!", intents=discord.Intents.all())
         self.initial_extensions = [
-            'cogs.music',
+            "cogs.music",
         ]
 
     async def setup_hook(self):
@@ -25,10 +24,11 @@ class MyBot(commands.Bot):
 
     @tasks.loop(minutes=10)
     async def background_task(self):
-        print('Running background task...')
+        print("Running background task...")
 
     async def on_ready(self):
-        print('Ready!')
+        print("Ready!")
+
 
 bot = MyBot()
 bot.run(TOKEN)
