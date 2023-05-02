@@ -1,0 +1,10 @@
+# env
+.dmvenv/
+
+# editors
+.vscode/
+
+#
+secrets.csv
+
+src/__pycache__
