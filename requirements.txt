@@ -1,0 +1,6 @@
+black
+fuzzywuzzy
+matplotlib
+mypy
+static_frame
+yt_dlp
