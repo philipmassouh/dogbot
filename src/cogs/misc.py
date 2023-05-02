@@ -6,8 +6,13 @@ class Misc(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def uwufy(self, ctx, sentence):
-        await ctx.send(sentence.replace("r", "w").replace("l", "w") + "teehee")
+    async def uwufy(self, ctx, *sentence):
+        # TODO optimize with better rules and regex
+        sentence = " ".join(sentence)
+        await ctx.send(
+            sentence.replace("ing ", "wing").replace("r", "w").replace("l", "w")
+            + " teehee"
+        )
 
 
 async def setup(bot):

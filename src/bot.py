@@ -10,9 +10,7 @@ TOKEN, __GUILD = open("secrets.csv", "r").readlines()
 class MyBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix="!", intents=discord.Intents.all())
-        self.initial_extensions = [
-            "cogs.music",
-        ]
+        self.initial_extensions = ["cogs.music", "cogs.misc"]
 
     async def setup_hook(self):
         self.background_task.start()
