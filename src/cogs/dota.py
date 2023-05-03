@@ -100,6 +100,25 @@ class Dota(commands.Cog):
             await ctx.send(file=discord.File(image, str(fp)))
         os.remove(fp)
 
+    @commands.command("dota_counters")
+    async def counters(self, ctx, *hero):
+        hero = " ".join(hero)
+        hero = self._fuzzy_match_hero(hero)
+        hero_id = self.heroes["id"].loc[hero]
+        matchups = requests.get(
+            f"https://api.opendota.com/api/heroes/{hero_id}/matchups"
+        ).json()
+        ordered = sorted(
+            matchups, key=lambda m: m["wins"] / m["games_played"], reverse=True
+        )
+        icon_links = [
+            "https://api.opendota.com"
+            + self.heroes["icon"].loc[self.heroes["id"] == x["hero_id"]].values[0][:-1]
+            for x in ordered[:5]
+        ]
+        for icon in icon_links:
+            await ctx.send(icon)
+
 
 async def setup(bot):
     await bot.add_cog(Dota(bot))
