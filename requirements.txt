@@ -1,11 +1,11 @@
-black   # developers
+black           # developers
+bs4
 fuzzywuzzy
 matplotlib
-mypy    # developers
-static_frame
-yt_dlp
+mypy            # developers
+Pillow
+pyqt5           # developers
 requests
 seaborn
-pyqt5    # developers
-bs4
-Pillow
+static_frame
+yt_dlp
