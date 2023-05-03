@@ -5,7 +5,9 @@ from pathlib import Path
 import discord
 import requests
 import static_frame as sf
+from bs4 import BeautifulSoup
 from discord.ext import commands
+from PIL import Image
 
 warnings.filterwarnings("ignore")
 import os
@@ -100,24 +102,71 @@ class Dota(commands.Cog):
             await ctx.send(file=discord.File(image, str(fp)))
         os.remove(fp)
 
+    # @commands.command("dota_counters_old")
+    # async def counters_old(self, ctx, *hero):
+    #     hero = " ".join(hero)
+    #     hero = self._fuzzy_match_hero(hero)
+    #     hero_id = self.heroes["id"].loc[hero]
+    #     matchups = requests.get(
+    #         f"https://api.opendota.com/api/heroes/{hero_id}/matchups"
+    #     ).json()
+    #     ordered = sorted(
+    #         matchups, key=lambda m: m["wins"] / m["games_played"], reverse=True
+    #     )
+    #     icon_links = [
+    #         "https://api.opendota.com"
+    #         + self.heroes["icon"].loc[self.heroes["id"] == x["hero_id"]].values[0][:-1]
+    #         for x in ordered[:5]
+    #     ]
+    #     for icon in icon_links:
+    #         await ctx.send(icon)
+
     @commands.command("dota_counters")
-    async def counters(self, ctx, *hero):
-        hero = " ".join(hero)
-        hero = self._fuzzy_match_hero(hero)
-        hero_id = self.heroes["id"].loc[hero]
-        matchups = requests.get(
-            f"https://api.opendota.com/api/heroes/{hero_id}/matchups"
-        ).json()
-        ordered = sorted(
-            matchups, key=lambda m: m["wins"] / m["games_played"], reverse=True
+    async def counters(self, ctx, *, hero):
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36"
+        }
+
+        soup = BeautifulSoup(
+            requests.get(
+                f"https://www.dotabuff.com/heroes/{hero}",
+                headers=headers,
+            ).content,
+            "html",
         )
-        icon_links = [
-            "https://api.opendota.com"
-            + self.heroes["icon"].loc[self.heroes["id"] == x["hero_id"]].values[0][:-1]
-            for x in ordered[:5]
+
+        if header := soup.find(string="Worst Versus"):
+            table = header.find_next("table")
+        else:
+            raise Exception("worst versus not found")
+        heroes = [
+            self._fuzzy_match_hero(
+                row.find_all("td")[0]
+                .find_next("a")
+                .get("href")
+                .removeprefix("/heroes/")
+            )
+            for row in table.find_all("tr")[1:]
         ]
-        for icon in icon_links:
-            await ctx.send(icon)
+
+        icon_links = [
+            "https://api.opendota.com" + self.heroes["icon"].loc[hero][:-1]
+            for hero in heroes
+        ]
+
+        get_image = lambda url: requests.get(url, headers=headers, stream=True).raw
+        images = [get_image(url) for url in icon_links]
+
+        combined = Image.new("RGBA", (32 * 10, 32), (0, 0, 0, 0))
+
+        for i, img in enumerate(images):
+            combined.paste(Image.open(img), (i * 32, 0))
+
+        combined.save(fp := f"{hero}_counters_{date.today()}.png")
+
+        with open(fp, "rb") as image:
+            await ctx.send(file=discord.File(image, str(fp)))
+        os.remove(fp)
 
 
 async def setup(bot):

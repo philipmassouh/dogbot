@@ -7,3 +7,5 @@ yt_dlp
 requests
 seaborn
 pyqt5    # developers
+bs4
+Pillow
