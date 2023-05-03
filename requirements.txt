@@ -1,0 +1,9 @@
+black   # developers
+fuzzywuzzy
+matplotlib
+mypy    # developers
+static_frame
+yt_dlp
+requests
+seaborn
+pyqt5    # developers

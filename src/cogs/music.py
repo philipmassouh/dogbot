@@ -13,7 +13,7 @@ class Music(commands.Cog):
             self.voice_client = await ctx.author.voice.channel.connect()
         else:
             await ctx.send("You must be in a voice channel to summon me.")
-            
+
     @commands.command()
     async def leave(self, ctx):
         if self.voice_client:
@@ -25,7 +25,9 @@ class Music(commands.Cog):
     @commands.command()
     async def play(self, ctx, url):
         if not self.voice_client:
-            await ctx.send("I'm not connected to a voice channel. Use the `join` command to summon me to a voice channel.")
+            await ctx.send(
+                "I'm not connected to a voice channel. Use the `join` command to summon me to a voice channel."
+            )
             return
 
         # Set up the options for youtube_dl
@@ -53,7 +55,7 @@ class Music(commands.Cog):
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
             try:
                 info = ydl.extract_info(url, download=False)
-                url = info['url']
+                url = info["url"]
             except Exception as e:
                 await ctx.send(f"An error occurred while trying to play the video: {e}")
                 return
