@@ -9,6 +9,8 @@ from bs4 import BeautifulSoup
 from discord.ext import commands
 from PIL import Image
 
+import constants
+
 warnings.filterwarnings("ignore")
 import os
 
@@ -16,58 +18,62 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from fuzzywuzzy import process
 
-rank_map = {
-    "Herald": "1",
-    "Guardian": "2",
-    "Crusader": "3",
-    "Archon": "4",
-    "Legend": "5",
-    "Ancient": "6",
-    "Divine": "7",
-    "Immortal": "8",
-    "Pro": "pro",
-}
-
 
 class Dota(commands.Cog):
     api_root = "https://api.opendota.com/api/"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36"
+    }
 
     def __init__(self, bot):
         self.bot = bot
-        self.heroes = self._get_heroes()
+        self.heroes = self._from_opendota()
 
     @classmethod
-    def _get_heroes(cls) -> sf.Frame:
-        hero_dict = {
-            h["localized_name"]: h
-            for h in requests.get(cls.api_root + "heroStats").json()
-        }
-        heroes = sf.FrameGO.from_dict_records_items(hero_dict.items())
-        for k, v in rank_map.items():
-            heroes[k] = heroes[f"{v}_win"] / heroes[f"{v}_pick"]
+    def _from_opendota(cls) -> sf.Frame:
+        """
+        Retrieve hero stats from the opendota api.
+        """
+        resp = requests.get(cls.api_root + "heroStats")
+
+        heroes = sf.FrameGO.from_dict_records(resp.json())
+        heroes = heroes.set_index("id", drop=True)
+
+        # calculate per-rank winrates
+        for r in constants.RankMap:
+            heroes[f"{r.name}_wr"] = (
+                heroes[f"{r.value}_win"] / heroes[f"{r.value}_pick"]
+            )
+
         return heroes.to_frame()
 
-    def _fuzzy_match_hero(self, name: str) -> str:
+    @classmethod
+    def _fuzzy_match_hero(cls, hero_dirty: str) -> int:
         """
-        return the highest probability match of a dota hero given a string
+        Fuzzymatch user input to a hero name and return the id.
         """
-        # TODO consider failing under a threshold
-        result = process.extractOne(name, self.heroes.index)
-        if result:
-            return result[0]
-        else:
-            raise Exception("no matches")  # TODO
+        MATCH_THRESHOLD = 0
+        result = process.extractOne(hero_dirty, constants.HERO_TO_ID.keys())
 
-    def _get_winrate(self, hero: str) -> sf.Series:
-        return self.heroes[list(rank_map.keys())].loc[hero]
+        if result and result[1] > MATCH_THRESHOLD:
+            return constants.HERO_TO_ID[result[0]]
 
-    def _get_winrate_plot(self, data: sf.Series, hero: str) -> Path:
+        raise Exception(f"No matches for {hero_dirty}")
+
+    def _get_winrate(self, hero_id: int) -> sf.Series:
+        """
+        Given a hero_id, return the winrates in all ranks.
+        """
+        winrate_columns = [f"{r.name}_wr" for r in constants.RankMap]
+        return self.heroes[winrate_columns].loc[hero_id]
+
+    def _get_winrate_plot(self, data: sf.Series, hero: int) -> Path:
         sns.set_palette(sns.color_palette(["#7289da", "#99aab5"]))
         fig, ax = plt.subplots()
         bars = ax.barh(data.index, data.values)
         ax.axvline(x=data.mean(), color="#ffffff", linestyle="--")
 
-        ax.set_title(f"{hero} winrate", color="#ffffff")
+        ax.set_title(f"{constants.ID_TO_HERO[hero]} winrate", color="#ffffff")
         ax.set_xlabel("Win Rate", color="#ffffff")
         ax.set_ylabel("Rank", color="#ffffff")
 
@@ -87,8 +93,6 @@ class Dota(commands.Cog):
         ax.spines["right"].set_visible(False)
         ax.spines["top"].set_visible(False)
 
-        # fig.patch.set_facecolor("#23272a")
-        # ax.patch.set_facecolor("#23272a")
         plt.savefig(fout := f"{hero}_winrate_{date.today()}.png", transparent=True)
         return Path(fout)
 
@@ -102,35 +106,16 @@ class Dota(commands.Cog):
             await ctx.send(file=discord.File(image, str(fp)))
         os.remove(fp)
 
-    # @commands.command("dota_counters_old")
-    # async def counters_old(self, ctx, *hero):
-    #     hero = " ".join(hero)
-    #     hero = self._fuzzy_match_hero(hero)
-    #     hero_id = self.heroes["id"].loc[hero]
-    #     matchups = requests.get(
-    #         f"https://api.opendota.com/api/heroes/{hero_id}/matchups"
-    #     ).json()
-    #     ordered = sorted(
-    #         matchups, key=lambda m: m["wins"] / m["games_played"], reverse=True
-    #     )
-    #     icon_links = [
-    #         "https://api.opendota.com"
-    #         + self.heroes["icon"].loc[self.heroes["id"] == x["hero_id"]].values[0][:-1]
-    #         for x in ordered[:5]
-    #     ]
-    #     for icon in icon_links:
-    #         await ctx.send(icon)
-
-    @commands.command("dota_counters")
-    async def counters(self, ctx, *, hero):
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36"
-        }
-
+    @classmethod
+    def _counters_from_dotabuff(cls, hero_id: int) -> list[int]:
+        """
+        Return a list of hero IDs representing the counters of a given `hero_id`
+        """
+        hero_for_url = constants.ID_TO_HERO[hero_id].lower()
         soup = BeautifulSoup(
             requests.get(
-                f"https://www.dotabuff.com/heroes/{hero}",
-                headers=headers,
+                f"https://www.dotabuff.com/heroes/{hero_for_url}",
+                headers=cls.headers,
             ).content,
             "html",
         )
@@ -138,31 +123,47 @@ class Dota(commands.Cog):
         if header := soup.find(string="Worst Versus"):
             table = header.find_next("table")
         else:
-            raise Exception("worst versus not found")
-        heroes = [
-            self._fuzzy_match_hero(
+            raise Exception("'Worst Versus' not found")
+        counters = [
+            cls._fuzzy_match_hero(
                 row.find_all("td")[0]
                 .find_next("a")
                 .get("href")
                 .removeprefix("/heroes/")
             )
-            for row in table.find_all("tr")[1:]
+            for row in table.find_all("tr")[1:]  # type: ignore
         ]
 
-        icon_links = [
-            "https://api.opendota.com" + self.heroes["icon"].loc[hero][:-1]
-            for hero in heroes
-        ]
+        return counters
 
-        get_image = lambda url: requests.get(url, headers=headers, stream=True).raw
-        images = [get_image(url) for url in icon_links]
+    def _hero_image(self, heroes: list[int], fp: Path) -> None:
+        """
+        Given a list of hero IDs `heroes`, and an `fp`, return a path
+        to a single image of all hero icons concatenated on the x-axis.
+        """
+        icon_links = (
+            "https://api.opendota.com" + partial_url[:-1]
+            for partial_url in self.heroes.loc[heroes]["icon"].values
+        )
 
-        combined = Image.new("RGBA", (32 * 10, 32), (0, 0, 0, 0))
+        images = (
+            requests.get(url, headers=self.headers, stream=True).raw
+            for url in icon_links
+        )
 
+        combined = Image.new("RGBA", (32 * len(heroes), 32), (0, 0, 0, 0))
         for i, img in enumerate(images):
             combined.paste(Image.open(img), (i * 32, 0))
 
-        combined.save(fp := f"{hero}_counters_{date.today()}.png")
+        combined.save(fp)
+
+    @commands.command("dota_counters")
+    async def counters(self, ctx, *, hero):
+        hero_id = self._fuzzy_match_hero(hero)
+        counters = self._counters_from_dotabuff(hero_id)
+
+        fp = Path(f"{hero}_counters_{date.today()}.png")
+        self._hero_image(counters, fp)
 
         with open(fp, "rb") as image:
             await ctx.send(file=discord.File(image, str(fp)))
