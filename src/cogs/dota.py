@@ -67,20 +67,33 @@ class Dota(commands.Cog):
         winrate_columns = [f"{r.name}_wr" for r in constants.RankMap]
         return self.heroes[winrate_columns].loc[hero_id]
 
-    def _get_winrate_plot(self, data: sf.Series, hero: int) -> Path:
-        sns.set_palette(sns.color_palette(["#7289da", "#99aab5"]))
+    @classmethod
+    def _get_winrate_plot(cls, data: sf.Series, hero: int) -> Path:
+        new_labels = [x.removesuffix("_wr") for x in data.index.values]
+        data = data.relabel(new_labels)
         fig, ax = plt.subplots()
-        bars = ax.barh(data.index, data.values)
-        ax.axvline(x=data.mean(), color="#ffffff", linestyle="--")
+        bars = ax.barh(data.index, data.values, color="#5865F2")
+        mean = data.mean()
+        ax.axvline(x=mean, color="#ffffff", linestyle="--")
+        ax.text(
+            mean,
+            ax.get_ylim()[1],
+            f"Weighted mean: {mean:.2f}",
+            ha="center",
+            va="bottom",
+            color="white",
+        )
 
         ax.set_title(f"{constants.ID_TO_HERO[hero]} winrate", color="#ffffff")
         ax.set_xlabel("Win Rate", color="#ffffff")
         ax.set_ylabel("Rank", color="#ffffff")
 
+        bar_x = max((bar.get_width() for bar in bars))
+
         for i, bar in enumerate(bars):
             value = data.iloc[i]
             ax.text(
-                bar.get_width() + 0.005,
+                bar_x + 0.005,
                 bar.get_y() + bar.get_height() / 2,
                 f"{value:.1%}",
                 ha="left",
@@ -90,8 +103,14 @@ class Dota(commands.Cog):
 
         ax.tick_params(axis="x", colors="#ffffff")
         ax.tick_params(axis="y", colors="#ffffff")
+        ax.spines["bottom"].set_color("white")
+        ax.spines["top"].set_color("white")
+        ax.spines["left"].set_color("white")
+        ax.spines["right"].set_color("white")
         ax.spines["right"].set_visible(False)
         ax.spines["top"].set_visible(False)
+        ax.set_xlim([data.min() - 0.1, data.max()])  # type: ignore
+        ax.grid(False)
 
         plt.savefig(fout := f"{hero}_winrate_{date.today()}.png", transparent=True)
         return Path(fout)

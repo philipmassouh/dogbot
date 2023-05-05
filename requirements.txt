@@ -9,3 +9,4 @@ requests
 seaborn
 static_frame
 yt_dlp
+plotly
