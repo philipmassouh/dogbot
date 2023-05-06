@@ -3,12 +3,13 @@ from datetime import date
 from pathlib import Path
 
 import discord
-import dota_constants
 import requests
 import static_frame as sf
 from bs4 import BeautifulSoup
 from discord.ext import commands
 from PIL import Image
+
+import dota_constants
 
 warnings.filterwarnings("ignore")
 import os
@@ -169,10 +170,10 @@ class Dota(commands.Cog):
             for url in icon_links
         )
 
-        combined = Image.new("RGBA", (32 * len(heroes), 32), (0, 0, 0, 0))
+        combined = Image.new("RGBA", (32 * len(heroes) // 2, 64), (0, 0, 0, 0))
         for i, img in enumerate(images):
-            combined.paste(Image.open(img), (i * 32, 0))
-
+            box = ((i * 32 % 160), int(i > 4) * 32)
+            combined.paste(Image.open(img), box=box)
         combined.save(fp)
 
     @commands.command("dota_counters")
@@ -184,7 +185,8 @@ class Dota(commands.Cog):
         self._hero_image(counters, fp)
 
         with open(fp, "rb") as image:
-            await ctx.send(file=discord.File(image, str(fp)))
+            await ctx.send(f"{dota_constants.ID_TO_HERO[hero_id]} counters:")
+            await ctx.send(file=discord.File(image))
         os.remove(fp)
 
 

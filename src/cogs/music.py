@@ -12,12 +12,14 @@ class YoutubeSong:
     def __init__(
         self,
         title: str,
+        url: str,
         uploader_name: str,
         uploader_url: str,
         duration: timedelta,
         thumbnail_url: str,
     ) -> None:
         self.title = title
+        self.url = url
         self.uploader_name = uploader_name
         self.uploader_url = uploader_url
         self.duration = duration
@@ -36,6 +38,7 @@ class YoutubeSong:
 
         return cls(
             title=info.get("title:", "Title not found"),
+            url=info["url"],
             uploader_name=info.get("uploader", "Uploader not found"),
             uploader_url=info.get("uploader_url", "Uploader not found"),
             duration=timedelta(
@@ -50,13 +53,10 @@ class YoutubeSong:
     def build_yt_embed(self):
         embed = discord.Embed(
             title=self.title,
-            url=self.,
-            description=f"**Now Playing**\nUploader: [{uploader_name}]({uploader_url})\nDuration: {duration}",
+            url=self.url,
+            description=f"**Now Playing**\nUploader: [{self.uploader_name}]({self.uploader_url})\nDuration: {self.duration}",
         )
-
-        # Add the thumbnail as the embed image
-        embed.set_image(url=thumbnail_url)
-
+        embed.set_image(url=self.thumbnail_url)
         return embed
 
 
