@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 from discord.ext import commands
 from PIL import Image
 
-import constants
+import dota_constants
 
 warnings.filterwarnings("ignore")
 import os
@@ -40,7 +40,7 @@ class Dota(commands.Cog):
         heroes = heroes.set_index("id", drop=True)
 
         # calculate per-rank winrates
-        for r in constants.RankMap:
+        for r in dota_constants.RankMap:
             heroes[f"{r.name}_wr"] = (
                 heroes[f"{r.value}_win"] / heroes[f"{r.value}_pick"]
             )
@@ -53,10 +53,10 @@ class Dota(commands.Cog):
         Fuzzymatch user input to a hero name and return the id.
         """
         MATCH_THRESHOLD = 0
-        result = process.extractOne(hero_dirty, constants.HERO_TO_ID.keys())
+        result = process.extractOne(hero_dirty, dota_constants.HERO_TO_ID.keys())
 
         if result and result[1] > MATCH_THRESHOLD:
-            return constants.HERO_TO_ID[result[0]]
+            return dota_constants.HERO_TO_ID[result[0]]
 
         raise Exception(f"No matches for {hero_dirty}")
 
@@ -64,7 +64,7 @@ class Dota(commands.Cog):
         """
         Given a hero_id, return the winrates in all ranks.
         """
-        winrate_columns = [f"{r.name}_wr" for r in constants.RankMap]
+        winrate_columns = [f"{r.name}_wr" for r in dota_constants.RankMap]
         return self.heroes[winrate_columns].loc[hero_id]
 
     @classmethod
@@ -84,7 +84,7 @@ class Dota(commands.Cog):
             color="white",
         )
 
-        ax.set_title(f"{constants.ID_TO_HERO[hero]} winrate", color="#ffffff")
+        ax.set_title(f"{dota_constants.ID_TO_HERO[hero]} winrate", color="#ffffff")
         ax.set_xlabel("Win Rate", color="#ffffff")
         ax.set_ylabel("Rank", color="#ffffff")
 
@@ -130,7 +130,7 @@ class Dota(commands.Cog):
         """
         Return a list of hero IDs representing the counters of a given `hero_id`
         """
-        hero_for_url = constants.ID_TO_HERO[hero_id].lower()
+        hero_for_url = dota_constants.ID_TO_HERO[hero_id].lower()
         soup = BeautifulSoup(
             requests.get(
                 f"https://www.dotabuff.com/heroes/{hero_for_url}",
@@ -170,10 +170,10 @@ class Dota(commands.Cog):
             for url in icon_links
         )
 
-        combined = Image.new("RGBA", (32 * len(heroes), 32), (0, 0, 0, 0))
+        combined = Image.new("RGBA", (32 * len(heroes) // 2, 64), (0, 0, 0, 0))
         for i, img in enumerate(images):
-            combined.paste(Image.open(img), (i * 32, 0))
-
+            box = ((i * 32 % 160), int(i > 4) * 32)
+            combined.paste(Image.open(img), box=box)
         combined.save(fp)
 
     @commands.command("dota_counters")
@@ -185,7 +185,8 @@ class Dota(commands.Cog):
         self._hero_image(counters, fp)
 
         with open(fp, "rb") as image:
-            await ctx.send(file=discord.File(image, str(fp)))
+            await ctx.send(f"{dota_constants.ID_TO_HERO[hero_id]} counters:")
+            await ctx.send(file=discord.File(image))
         os.remove(fp)
 
 
