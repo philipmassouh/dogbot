@@ -1,6 +1,63 @@
+import time
+from datetime import timedelta
+
 import discord
-import yt_dlp as youtube_dl
+import yt_dlp
 from discord.ext import commands
+
+from music_constants import FFMPEG_OPTS, YTDLP_OPTS
+
+
+class YoutubeSong:
+    def __init__(
+        self,
+        title: str,
+        uploader_name: str,
+        uploader_url: str,
+        duration: timedelta,
+        thumbnail_url: str,
+    ) -> None:
+        self.title = title
+        self.uploader_name = uploader_name
+        self.uploader_url = uploader_url
+        self.duration = duration
+        self.thumbnail_url = thumbnail_url
+
+    @classmethod
+    async def from_url(cls, link: str) -> "YoutubeSong":
+        """
+        Given a youtube url, extract metadata needed to display information
+        and play the audio.
+        """
+        with yt_dlp.YoutubeDL(YTDLP_OPTS) as ydl:
+            info = ydl.extract_info(link, download=False)
+            if info is None:
+                raise Exception("ydl unable to extract info")
+
+        return cls(
+            title=info.get("title:", "Title not found"),
+            uploader_name=info.get("uploader", "Uploader not found"),
+            uploader_url=info.get("uploader_url", "Uploader not found"),
+            duration=timedelta(
+                seconds=float(info.get("duration", "Duration not found"))
+            ),
+            thumbnail_url=max(
+                info["thumbnails"],
+                key=lambda t: (t.get("width", 0), t.get("height", 0)),
+            )["url"],
+        )
+
+    def build_yt_embed(self):
+        embed = discord.Embed(
+            title=self.title,
+            url=self.,
+            description=f"**Now Playing**\nUploader: [{uploader_name}]({uploader_url})\nDuration: {duration}",
+        )
+
+        # Add the thumbnail as the embed image
+        embed.set_image(url=thumbnail_url)
+
+        return embed
 
 
 class Music(commands.Cog):
@@ -8,7 +65,10 @@ class Music(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def join(self, ctx):
+    async def join_if_summoner_connected(self, ctx):
+        """
+        Join VC that command issuer is in.
+        """
         if ctx.author.voice:
             self.voice_client = await ctx.author.voice.channel.connect()
         else:
@@ -22,37 +82,20 @@ class Music(commands.Cog):
         else:
             await ctx.send("I'm not connected to a voice channel.")
 
-    @commands.command()
+    @commands.command("play_yt")
     async def play(self, ctx, url):
-        if not self.voice_client:
-            await ctx.send(
-                "I'm not connected to a voice channel. Use the `join` command to summon me to a voice channel."
-            )
+        # if not connected
+        if not self.bot.voice_clients:
+            await self.join_if_summoner_connected(ctx)
+
+        # if muted, refuse to play music
+        if ctx.guild.me.voice.mute:
+            await ctx.send("I'm server muted. Unmute me before trying to play music.")
+            time.sleep(5)
+            await self.leave(ctx)
             return
 
-        # Set up the options for youtube_dl
-        ydl_opts = {
-            "format": "bestaudio",
-            "extractaudio": True,
-            "audioformat": "mp3",
-            "outtmpl": "%(extractor)s-%(id)s-%(title)s.%(ext)s",
-            "restrictfilenames": True,
-            "noplaylist": True,
-            "nocheckcertificate": True,
-            "ignoreerrors": False,
-            "logtostderr": False,
-            "quiet": True,
-            "no_warnings": True,
-            "default_search": "auto",
-            "source_address": "0.0.0.0",
-        }
-
-        FFMPEG_OPTIONS = {
-            "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
-            "options": "-vn",
-        }
-
-        with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        with yt_dlp.YoutubeDL(YTDLP_OPTS) as ydl:
             try:
                 info = ydl.extract_info(url, download=False)
                 url = info["url"]
@@ -60,10 +103,9 @@ class Music(commands.Cog):
                 await ctx.send(f"An error occurred while trying to play the video: {e}")
                 return
 
-        # Play the audio
+        await ctx.send(embed=YoutubeSong.build_yt_embed(info))
         try:
-            self.voice_client.play(discord.FFmpegPCMAudio(url, **FFMPEG_OPTIONS))
-            await ctx.send("Playing audio.")
+            self.voice_client.play(discord.FFmpegPCMAudio(url, **FFMPEG_OPTS))
         except Exception as e:
             await ctx.send(f"An error occurred while trying to play the audio: {e}")
 
