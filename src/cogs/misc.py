@@ -1,3 +1,4 @@
+import discord
 from discord.ext import commands
 
 
@@ -12,6 +13,15 @@ class Misc(commands.Cog):
             sentence.replace("ing ", "wing").replace("r", "w").replace("l", "w")
             + " teehee"
         )
+
+    @commands.Cog.listener()
+    async def on_invite_create(self, invite: discord.Invite) -> None:
+        name = "SOMEONE"
+        if invite and invite.inviter and invite.inviter.name:
+            name = invite.inviter.name
+        message = f"ALERT {name} HAS CREATED AN INVITE -- BRACE FOR CRINGE"
+        channel = await self.bot.fetch_channel(559158696635269152)
+        await channel.send(message)
 
 
 async def setup(bot):
