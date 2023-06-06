@@ -10,3 +10,5 @@ seaborn
 static_frame
 yt_dlp
 plotly
+discord
+PyNaCl

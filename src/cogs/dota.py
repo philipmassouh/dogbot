@@ -3,13 +3,12 @@ from datetime import date
 from pathlib import Path
 
 import discord
+import dota_constants
 import requests
 import static_frame as sf
 from bs4 import BeautifulSoup
 from discord.ext import commands
 from PIL import Image
-
-import dota_constants
 
 warnings.filterwarnings("ignore")
 import os
