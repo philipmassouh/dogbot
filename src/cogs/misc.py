@@ -19,7 +19,7 @@ class Misc(commands.Cog):
         name = "SOMEONE"
         if invite and invite.inviter and invite.inviter.name:
             name = invite.inviter.name
-        message = f"ALERT {name} HAS CREATED AN INVITE -- BRACE FOR CRINGE"
+        message = f"@here ALERT {name} HAS CREATED AN INVITE -- BRACE FOR CRINGE"
         channel = await self.bot.fetch_channel(559158696635269152)
         await channel.send(message)
 

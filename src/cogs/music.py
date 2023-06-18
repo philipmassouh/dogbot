@@ -123,21 +123,12 @@ class Music(commands.Cog):
             await ctx.send("Nothing is playing.")
 
     @commands.command()
-    # @register_ctx
-    async def burger(self, ctx, url):
-        self.last_ctx = ctx
-        if not self.bot.voice_clients:
-            await self._join_if_summoner_connected(ctx)
-        song = YoutubeSource.from_url(url, ctx.author.name)
-        await self._play(ctx, song)
-
-    @commands.command()
-    # @register_ctx
     async def play(self, ctx, url):
         """
         Joins the call. Given a url, creates a song and moves it to the front of
         the queue. If a song is currently playing, it will be skipped.
         """
+        await ctx.message.delete()
         self.last_ctx = ctx
         if not self.bot.voice_clients:
             await self._join_if_summoner_connected(ctx)
@@ -153,6 +144,8 @@ class Music(commands.Cog):
         Joins the call. Given a url, creates a song and adds it to the back of
         the queue.
         """
+        await ctx.message.delete()
+
         self.last_ctx = ctx
         if not self.bot.voice_clients:
             await self._join_if_summoner_connected(ctx)
@@ -188,6 +181,7 @@ class Music(commands.Cog):
 
     async def _play(self, ctx, song):
         self.last_ctx = ctx
+
         if not self.bot.voice_clients:
             await self._join_if_summoner_connected(ctx)
 

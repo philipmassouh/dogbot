@@ -158,7 +158,7 @@ class Dota(commands.Cog):
     def _hero_image(self, heroes: list[int], fp: Path) -> None:
         """
         Given a list of hero IDs `heroes`, and an `fp`, return a path
-        to a single image of all hero icons concatenated on the x-axis.
+        to a single image of all hero icons in a 2x5 grid.
         """
         icon_links = (
             "https://api.opendota.com" + partial_url[:-1]
