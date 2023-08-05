@@ -128,7 +128,7 @@ class Music(commands.Cog):
         Joins the call. Given a url, creates a song and moves it to the front of
         the queue. If a song is currently playing, it will be skipped.
         """
-        await ctx.message.delete()
+        # await ctx.message.delete()
         self.last_ctx = ctx
         if not self.bot.voice_clients:
             await self._join_if_summoner_connected(ctx)
@@ -144,7 +144,7 @@ class Music(commands.Cog):
         Joins the call. Given a url, creates a song and adds it to the back of
         the queue.
         """
-        await ctx.message.delete()
+        # await ctx.message.delete()
 
         self.last_ctx = ctx
         if not self.bot.voice_clients:
