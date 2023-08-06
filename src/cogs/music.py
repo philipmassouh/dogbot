@@ -9,14 +9,6 @@ from discord.ext import commands, tasks
 from music_constants import FFMPEG_OPTS, YTDLP_OPTS
 
 
-def register_ctx(func):
-    def wrapper(self, ctx, *args, **kwargs):
-        self.last_ctx = ctx
-        return func(self, ctx, *args, **kwargs)
-
-    return wrapper
-
-
 class YoutubeSource(discord.PCMVolumeTransformer):
     def __init__(
         self,
@@ -111,7 +103,6 @@ class Music(commands.Cog):
         await self.bot.wait_until_ready()
 
     @commands.command()
-    # @register_ctx
     async def skip(self, ctx):
         """
         Skip the currently playing item.
@@ -128,7 +119,6 @@ class Music(commands.Cog):
         Joins the call. Given a url, creates a song and moves it to the front of
         the queue. If a song is currently playing, it will be skipped.
         """
-        # await ctx.message.delete()
         self.last_ctx = ctx
         if not self.bot.voice_clients:
             await self._join_if_summoner_connected(ctx)
@@ -138,21 +128,17 @@ class Music(commands.Cog):
             await self.skip(ctx)
 
     @commands.command()
-    # @register_ctx
     async def queue(self, ctx, url) -> None:
         """
         Joins the call. Given a url, creates a song and adds it to the back of
         the queue.
         """
-        # await ctx.message.delete()
-
         self.last_ctx = ctx
         if not self.bot.voice_clients:
             await self._join_if_summoner_connected(ctx)
         self._queue.append(YoutubeSource.from_url(url, ctx.author.name))
 
     @commands.command()
-    # @register_ctx
     async def view_queue(self, ctx):
         """
         Prints the queue where the first line is the upcoming song.
@@ -161,7 +147,6 @@ class Music(commands.Cog):
         await ctx.send("Queue:\n" + "\n".join(str(x) for x in self._queue))
 
     @commands.command()
-    # @register_ctx
     async def leave(self, ctx):
         """
         If the bot is connected, disconnects it from the channel.
