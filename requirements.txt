@@ -1,10 +1,10 @@
+numpy
 black           # developers
 bs4
 fuzzywuzzy
 matplotlib
 mypy            # developers
 Pillow
-pyqt5           # developers
 requests
 seaborn
 static_frame
