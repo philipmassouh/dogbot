@@ -4,6 +4,7 @@ from discord.ext import commands, tasks
 
 import boto3
 from botocore.exceptions import ClientError
+import json
 # Silence useless bug reports messages
 youtube_dl.utils.bug_reports_message = lambda: ""
 
@@ -27,6 +28,8 @@ def get_secret():
         raise e
 
     secret = get_secret_value_response['SecretString']["DOGBOT_TOKEN_DISCORD"]
+    secret = json.loads(secret)
+    secret = secret["DOGBOT_TOKEN_DISCORD"]
 
     return secret
 
