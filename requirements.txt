@@ -12,3 +12,4 @@ yt_dlp
 plotly
 discord
 PyNaCl
+boto3

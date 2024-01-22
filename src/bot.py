@@ -2,10 +2,33 @@ import discord
 import yt_dlp as youtube_dl
 from discord.ext import commands, tasks
 
+import boto3
+from botocore.exceptions import ClientError
 # Silence useless bug reports messages
 youtube_dl.utils.bug_reports_message = lambda: ""
-TOKEN, __GUILD = open("secrets.csv", "r").readlines()
 
+def get_secret():
+
+    secret_name = "dogbot_token_discord"
+    region_name = "us-west-1"
+
+    # Create a Secrets Manager client
+    session = boto3.session.Session()
+    client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+
+    try:
+        get_secret_value_response = client.get_secret_value(
+            SecretId=secret_name
+        )
+    except ClientError as e:
+        raise e
+
+    secret = get_secret_value_response['SecretString']
+
+    return secret
 
 class MyBot(commands.Bot):
     def __init__(self):
@@ -29,4 +52,4 @@ class MyBot(commands.Bot):
 
 
 bot = MyBot()
-bot.run(TOKEN)
+bot.run(get_secret())
