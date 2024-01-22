@@ -26,7 +26,7 @@ def get_secret():
     except ClientError as e:
         raise e
 
-    secret = get_secret_value_response['SecretString']
+    secret = get_secret_value_response['SecretString']["DOGBOT_TOKEN_DISCORD"]
 
     return secret
 
