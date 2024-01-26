@@ -18,3 +18,6 @@
 ## More coming soon
 - reach out if you want to contribute/help
     
+![counters](https://github.com/philipmassouh/dogbot/blob/master/demo_images/counters.png)
+![winrate](https://github.com/philipmassouh/dogbot/blob/master/demo_images/winrate.png)
+![music](https://github.com/philipmassouh/dogbot/blob/master/demo_images/music.png)
