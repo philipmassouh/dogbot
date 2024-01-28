@@ -1,7 +1,6 @@
 numpy
 black           # developers
 bs4
-fuzzywuzzy
 matplotlib
 mypy            # developers
 Pillow
@@ -13,3 +12,5 @@ plotly
 discord
 PyNaCl
 boto3
+bidict
+textdistance

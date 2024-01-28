@@ -1,3 +1,4 @@
+from enum import Enum
 import warnings
 from datetime import date
 from pathlib import Path
@@ -9,63 +10,82 @@ from bs4 import BeautifulSoup
 from discord.ext import commands
 from PIL import Image
 
-import dota_constants
 
-warnings.filterwarnings("ignore")
 import os
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-from fuzzywuzzy import process
 
+import textdistance
+
+import typing as tp
+from bidict import bidict
+
+class RankMap(Enum):
+    Herald = "1"
+    Guardian = "2"
+    Crusader = "3"
+    Archon = "4"
+    Legend = "5"
+    Ancient = "6"
+    Divine = "7"
+    Immortal = "8"
+    Pro = "pro"
+
+HeroName = tp.NewType('HeroName', str)
+HeroID = tp.NewType('HeroID', int)
+HeroLookup = tp.NewType('HeroLookup', bidict[HeroID, HeroName])
 
 class Dota(commands.Cog):
-    api_root = "https://api.opendota.com/api/"
-    headers = {
+    HEADERS = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36"
     }
 
+    ROOT_OPENDOTA = "https://api.opendota.com/api/"
+    ENDPOINT_OPENDOTA_HEROES = "heroes"
+    ENDPOINT_OPENDOTA_HEROSTATS = "heroStats"
+    ATTRIBUTE_OPENDOTA_ID = "id"
+    ATTRIBUTE_OPENDOTA_HERO_NAME = "localized_name"
+
+    ROOT_DOTABUFF = "https://www.dotabuff.com/"
+
     def __init__(self, bot):
+        hero_stats, hero_lookup = self._get_hero_resources()
+        self._hero_stats = hero_stats
+        self._hero_lookup = hero_lookup
+
         self.bot = bot
-        self.heroes = self._from_opendota()
+
 
     @classmethod
-    def _from_opendota(cls) -> sf.Frame:
-        """
-        Retrieve hero stats from the opendota api.
-        """
-        resp = requests.get(cls.api_root + "heroStats")
+    def _get_hero_resources(cls) -> tuple[dict[HeroID, dict[HeroName, tp.Any]], HeroLookup]:
+        response = requests.get(f"{cls.ROOT_OPENDOTA}/{cls.ENDPOINT_OPENDOTA_HEROSTATS}")
 
-        heroes = sf.FrameGO.from_dict_records(resp.json())
-        heroes = heroes.set_index("id", drop=True)
+        hero_stats = {}
+        hero_lookup = bidict({})
+        for hero_data in response.json():
+            hero_id = hero_data[cls.ATTRIBUTE_OPENDOTA_ID]
 
-        # calculate per-rank winrates
-        for r in dota_constants.RankMap:
-            heroes[f"{r.name}_wr"] = (
-                heroes[f"{r.value}_win"] / heroes[f"{r.value}_pick"]
-            )
+            hero_stats[hero_id] = hero_data
+            hero_lookup[hero_id] = hero_data[cls.ATTRIBUTE_OPENDOTA_HERO_NAME]
 
-        return heroes.to_frame()
-
+        return cls(hero_stats, hero_lookup)
+    
     @classmethod
-    def _fuzzy_match_hero(cls, hero_dirty: str) -> int:
-        """
-        Fuzzymatch user input to a hero name and return the id.
-        """
-        MATCH_THRESHOLD = 0
-        result = process.extractOne(hero_dirty, dota_constants.HERO_TO_ID.keys())
+    def _get_closest_hero(cls, hero: str, valid_heroes: tp.Iterable[HeroName]) -> HeroName:
+        (score, hero), *_ = sorted((textdistance.levenshtein.distance(hero, hero_candidate), hero_candidate) for hero_candidate in valid_heroes)
 
-        if result and result[1] > MATCH_THRESHOLD:
-            return dota_constants.HERO_TO_ID[result[0]]
+        if score < len(hero):
+            return hero
+        
+        raise RuntimeError(f"No valid matches for {hero=} in {valid_heroes=}.")
 
-        raise Exception(f"No matches for {hero_dirty}")
-
-    def _get_winrate(self, hero_id: int) -> sf.Series:
+    def _get_winrate(self, hero_id: HeroID) -> sf.Series:
         """
         Given a hero_id, return the winrates in all ranks.
         """
         winrate_columns = [f"{r.name}_wr" for r in dota_constants.RankMap]
-        return self.heroes[winrate_columns].loc[hero_id]
+        return self._hero_stats[winrate_columns].loc[hero_id]
 
     @classmethod
     def _get_winrate_plot(cls, data: sf.Series, hero: int) -> Path:
@@ -134,7 +154,7 @@ class Dota(commands.Cog):
         soup = BeautifulSoup(
             requests.get(
                 f"https://www.dotabuff.com/heroes/{hero_for_url}",
-                headers=cls.headers,
+                HEADERS=cls.HEADERS,
             ).content,
             "html",
         )
@@ -162,11 +182,11 @@ class Dota(commands.Cog):
         """
         icon_links = (
             "https://api.opendota.com" + partial_url[:-1]
-            for partial_url in self.heroes.loc[heroes]["icon"].values
+            for partial_url in self._hero_stats.loc[heroes]["icon"].values
         )
 
         images = (
-            requests.get(url, headers=self.headers, stream=True).raw
+            requests.get(url, HEADERS=self.HEADERS, stream=True).raw
             for url in icon_links
         )
 
