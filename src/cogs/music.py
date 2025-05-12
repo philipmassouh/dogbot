@@ -8,6 +8,7 @@ from discord.ext import commands, tasks
 
 from music_constants import FFMPEG_OPTS, YTDLP_OPTS
 
+discord.opus.load_opus('/opt/homebrew/lib/libopus.dylib')  # or path to opus.dll on Windows
 
 def register_ctx(func):
     def wrapper(self, ctx, *args, **kwargs):
@@ -72,6 +73,22 @@ class YoutubeSource(discord.PCMVolumeTransformer):
             )["url"],
         )
 
+    @classmethod
+    def from_query(cls, query: str, requester: str) -> "YoutubeSource":
+        """
+        Given a query or URL, determine if it's a URL or a search query.
+        If it's a search query, find the first result on YouTube.
+        """
+        with yt_dlp.YoutubeDL(YTDLP_OPTS) as ydl:
+            if query.startswith("http://") or query.startswith("https://"):
+                return cls.from_url(query, requester)
+            else:
+                search_results = ydl.extract_info(f"ytsearch:{query}", download=False)
+                if not search_results or "entries" not in search_results or len(search_results["entries"]) == 0:
+                    raise Exception("No search results found on YouTube")
+                first_result = search_results["entries"][0]
+                return cls.from_url(first_result["webpage_url"], requester)
+
     def build_yt_embed(self):
         embed = discord.Embed(
             title=self.title,
@@ -133,7 +150,7 @@ class Music(commands.Cog):
         if not self.bot.voice_clients:
             await self._join_if_summoner_connected(ctx)
 
-        self._queue.insert(0, YoutubeSource.from_url(url, ctx.author.name))
+        self._queue.insert(0, YoutubeSource.from_query(url, ctx.author.name))
         if self._is_playing():
             await self.skip(ctx)
 
@@ -149,7 +166,7 @@ class Music(commands.Cog):
         self.last_ctx = ctx
         if not self.bot.voice_clients:
             await self._join_if_summoner_connected(ctx)
-        self._queue.append(YoutubeSource.from_url(url, ctx.author.name))
+        self._queue.append(YoutubeSource.from_query(url, ctx.author.name))
 
     @commands.command()
     # @register_ctx

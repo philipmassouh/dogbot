@@ -9,8 +9,12 @@ import json
 # Silence useless bug reports messages
 youtube_dl.utils.bug_reports_message = lambda: ""
 
+def get_secret_file(fp: str) -> str:
+    with open(fp, "r") as f:
+        secret = f.readline().strip()
+    return secret
 
-def get_secret():
+def get_secret_aws():
     secret_name = "dogbot_token_discord"
     region_name = "us-west-1"
 
@@ -52,4 +56,4 @@ class MyBot(commands.Bot):
 
 
 bot = MyBot()
-bot.run(get_secret())
+bot.run(get_secret_file("/Users/philipmassouh/src/dogbot/secret"))
