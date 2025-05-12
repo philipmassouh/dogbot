@@ -74,20 +74,23 @@ class YoutubeSource(discord.PCMVolumeTransformer):
         )
 
     @classmethod
-    def from_query(cls, query: str, requester: str) -> "YoutubeSource":
+    def from_query(cls, url_or_query: str, requester: str) -> "YoutubeSource":
         """
         Given a query or URL, determine if it's a URL or a search query.
         If it's a search query, find the first result on YouTube.
         """
         with yt_dlp.YoutubeDL(YTDLP_OPTS) as ydl:
-            if query.startswith("http://") or query.startswith("https://"):
-                return cls.from_url(query, requester)
+            if url_or_query.startswith("http://") or url_or_query.startswith("https://"):
+                url = url_or_query
             else:
-                search_results = ydl.extract_info(f"ytsearch:{query}", download=False)
+                search_results = ydl.extract_info(f"ytsearch:{url_or_query} lyric", download=False)
                 if not search_results or "entries" not in search_results or len(search_results["entries"]) == 0:
-                    raise Exception("No search results found on YouTube")
-                first_result = search_results["entries"][0]
-                return cls.from_url(first_result["webpage_url"], requester)
+                    raise Exception(f"No search results found on YouTube for: {url_or_query}")
+                url = search_results["entries"][0]["webpage_url"]
+
+        return cls.from_url(url, requester)
+
+
 
     def build_yt_embed(self):
         embed = discord.Embed(
@@ -128,7 +131,6 @@ class Music(commands.Cog):
         await self.bot.wait_until_ready()
 
     @commands.command()
-    # @register_ctx
     async def skip(self, ctx):
         """
         Skip the currently playing item.
@@ -140,36 +142,32 @@ class Music(commands.Cog):
             await ctx.send("Nothing is playing.")
 
     @commands.command()
-    async def play(self, ctx, url):
+    async def play(self, ctx, *, query):
         """
         Joins the call. Given a url, creates a song and moves it to the front of
         the queue. If a song is currently playing, it will be skipped.
         """
-        # await ctx.message.delete()
         self.last_ctx = ctx
         if not self.bot.voice_clients:
             await self._join_if_summoner_connected(ctx)
 
-        self._queue.insert(0, YoutubeSource.from_query(url, ctx.author.name))
+        self._queue.insert(0, YoutubeSource.from_query(query, ctx.author.name))
         if self._is_playing():
             await self.skip(ctx)
 
     @commands.command()
-    # @register_ctx
-    async def queue(self, ctx, url) -> None:
+    async def queue(self, ctx, *, query) -> None:
         """
         Joins the call. Given a url, creates a song and adds it to the back of
         the queue.
         """
-        # await ctx.message.delete()
 
         self.last_ctx = ctx
         if not self.bot.voice_clients:
             await self._join_if_summoner_connected(ctx)
-        self._queue.append(YoutubeSource.from_query(url, ctx.author.name))
+        self._queue.append(YoutubeSource.from_query(query, ctx.author.name))
 
     @commands.command()
-    # @register_ctx
     async def view_queue(self, ctx):
         """
         Prints the queue where the first line is the upcoming song.
@@ -178,7 +176,6 @@ class Music(commands.Cog):
         await ctx.send("Queue:\n" + "\n".join(str(x) for x in self._queue))
 
     @commands.command()
-    # @register_ctx
     async def leave(self, ctx):
         """
         If the bot is connected, disconnects it from the channel.
