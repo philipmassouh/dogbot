@@ -1,7 +1,8 @@
+from __future__ import annotations
 import asyncio
 from collections import deque
 from datetime import timedelta
-
+from loguru import logger
 import discord
 import yt_dlp
 from discord.ext import commands, tasks
@@ -43,11 +44,8 @@ class YoutubeSource(discord.PCMVolumeTransformer):
         self.thumbnail_url = thumbnail_url
 
     @classmethod
-    def from_url(cls, requested_url: str, requester: str) -> "YoutubeSource":
-        """
-        Given a youtube url, extract metadata needed to display information
-        and play the audio.
-        """
+    def from_url(cls, requested_url: str, requester: str) -> YoutubeSource:
+        logger.info(f"{requester=} -> {requested_url=}")
         with yt_dlp.YoutubeDL(YTDLP_OPTS) as ydl:
             info = ydl.extract_info(requested_url, download=False)
             if info is None:
@@ -55,6 +53,7 @@ class YoutubeSource(discord.PCMVolumeTransformer):
 
         url = info["url"]
         source = discord.FFmpegPCMAudio(url, **FFMPEG_OPTS)
+        logger.info(f"Created {source=}")
 
         return cls(
             source=source,
