@@ -7,16 +7,31 @@ import discord
 import yt_dlp
 from discord.ext import commands, tasks
 
-from music_constants import FFMPEG_OPTS, YTDLP_OPTS
+class YTDLPException(Exception): ...
+
+YTDLP_OPTS = {
+    "format": "bestaudio[ext=m4a]/bestaudio/best",
+    "quiet": True,
+    "noplaylist": True,
+    "nocheckcertificate": True,
+    "no_warnings": True,
+    "default_search": "auto",
+    "source_address": "0.0.0.0",
+}
+
+FFMPEG_OPTS = {
+    "before_options": "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5",
+    "options": "-vn",
+}
+
+CONSTANT_YTDLP_TITLE = "title"
+CONSTANT_YTDLP_URL = "url"
+CONSTANT_YTDLP_UPLOADER = "uploader"
+CONSTANT_YTDLP_UPLOADER_URL = "uploader_url"
+CONSTANT_YTDLP_DURATION = "duration"
+CONSTANT_YTDLP_THUMBNAILS = "thumbnails"
 
 discord.opus.load_opus('/opt/homebrew/lib/libopus.dylib')  # or path to opus.dll on Windows
-
-def register_ctx(func):
-    def wrapper(self, ctx, *args, **kwargs):
-        self.last_ctx = ctx
-        return func(self, ctx, *args, **kwargs)
-
-    return wrapper
 
 
 class YoutubeSource(discord.PCMVolumeTransformer):
@@ -45,39 +60,41 @@ class YoutubeSource(discord.PCMVolumeTransformer):
 
     @classmethod
     def from_url(cls, requested_url: str, requester: str) -> YoutubeSource:
-        logger.info(f"{requester=} -> {requested_url=}")
+        logger.info(f"Extracting {requested_url=} from {requester=}")
         with yt_dlp.YoutubeDL(YTDLP_OPTS) as ydl:
             info = ydl.extract_info(requested_url, download=False)
             if info is None:
-                raise Exception("ydl unable to extract info")
+                logger.error(f"Failed to extract info: {requested_url=}")
+                raise YTDLPException()
 
-        url = info["url"]
+        title = info.get(CONSTANT_YTDLP_TITLE, "Title not found")
+        url = info[CONSTANT_YTDLP_URL]
+        uploader = info.get(CONSTANT_YTDLP_UPLOADER, "Uploader not found")
+        uploader_url=info.get(CONSTANT_YTDLP_UPLOADER_URL, "Uploader not found")
+        duration_seconds = info.get(CONSTANT_YTDLP_DURATION, "Duration not found")
+        duration = timedelta(seconds=float(duration_seconds))
+        thumbnail_urls = info.get(CONSTANT_YTDLP_THUMBNAILS, [None,])
+        thumbnail_url = max(thumbnail_urls, key=lambda t: (t.get("width", 0), t.get("height", 0)))[CONSTANT_YTDLP_URL]
+
         source = discord.FFmpegPCMAudio(url, **FFMPEG_OPTS)
-        logger.info(f"Created {source=}")
+        logger.info(f"Created source ({title=}, {uploader=})")
 
         return cls(
             source=source,
-            title=info.get("title", "Title not found"),
+            title=title,
             url=url,
             display_url=requested_url,
             requester=requester,
-            uploader_name=info.get("uploader", "Uploader not found"),
-            uploader_url=info.get("uploader_url", "Uploader not found"),
-            duration=timedelta(
-                seconds=float(info.get("duration", "Duration not found"))
-            ),
-            thumbnail_url=max(
-                info["thumbnails"],
-                key=lambda t: (t.get("width", 0), t.get("height", 0)),
-            )["url"],
+            uploader_name=uploader,
+            uploader_url=uploader_url,
+            duration=duration,
+            thumbnail_url=thumbnail_url,
         )
+
+
 
     @classmethod
     def from_query(cls, url_or_query: str, requester: str) -> "YoutubeSource":
-        """
-        Given a query or URL, determine if it's a URL or a search query.
-        If it's a search query, find the first result on YouTube.
-        """
         with yt_dlp.YoutubeDL(YTDLP_OPTS) as ydl:
             if url_or_query.startswith("http://") or url_or_query.startswith("https://"):
                 url = url_or_query
