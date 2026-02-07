@@ -1,13 +1,18 @@
 from __future__ import annotations
+
 import asyncio
 from collections import deque
+from ctypes.util import find_library
 from datetime import timedelta
-from loguru import logger
+
 import discord
 import yt_dlp
 from discord.ext import commands, tasks
+from loguru import logger
+
 
 class YTDLPException(Exception): ...
+
 
 YTDLP_OPTS = {
     "format": "bestaudio[ext=m4a]/bestaudio/best",
@@ -31,7 +36,30 @@ CONSTANT_YTDLP_UPLOADER_URL = "uploader_url"
 CONSTANT_YTDLP_DURATION = "duration"
 CONSTANT_YTDLP_THUMBNAILS = "thumbnails"
 
-discord.opus.load_opus('/opt/homebrew/lib/libopus.dylib')  # or path to opus.dll on Windows
+
+def _load_opus() -> None:
+    if discord.opus.is_loaded():
+        return
+
+    candidates = []
+    if detected := find_library("opus"):
+        candidates.append(detected)
+    candidates.extend(["libopus.so.0", "libopus.so", "libopus.dylib", "opus.dll"])
+
+    for candidate in candidates:
+        try:
+            discord.opus.load_opus(candidate)
+            logger.info(f"Loaded opus library: {candidate}")
+            return
+        except OSError:
+            continue
+
+    logger.warning(
+        "Could not load opus library. Install opus: brew install opus or apt-get install libopus0."
+    )
+
+
+_load_opus()
 
 
 class YoutubeSource(discord.PCMVolumeTransformer):
@@ -70,13 +98,24 @@ class YoutubeSource(discord.PCMVolumeTransformer):
         title = info.get(CONSTANT_YTDLP_TITLE, "Title not found")
         url = info[CONSTANT_YTDLP_URL]
         uploader = info.get(CONSTANT_YTDLP_UPLOADER, "Uploader not found")
-        uploader_url=info.get(CONSTANT_YTDLP_UPLOADER_URL, "Uploader not found")
+        uploader_url = info.get(CONSTANT_YTDLP_UPLOADER_URL, "Uploader not found")
         duration_seconds = info.get(CONSTANT_YTDLP_DURATION, "Duration not found")
         duration = timedelta(seconds=float(duration_seconds))
-        thumbnail_urls = info.get(CONSTANT_YTDLP_THUMBNAILS, [None,])
-        thumbnail_url = max(thumbnail_urls, key=lambda t: (t.get("width", 0), t.get("height", 0)))[CONSTANT_YTDLP_URL]
+        thumbnail_urls = info.get(
+            CONSTANT_YTDLP_THUMBNAILS,
+            [
+                None,
+            ],
+        )
+        thumbnail_url = max(
+            thumbnail_urls, key=lambda t: (t.get("width", 0), t.get("height", 0))
+        )[CONSTANT_YTDLP_URL]
 
-        source = discord.FFmpegPCMAudio(url, **FFMPEG_OPTS)
+        source = discord.FFmpegPCMAudio(
+            url,
+            before_options=FFMPEG_OPTS["before_options"],
+            options=FFMPEG_OPTS["options"],
+        )
         logger.info(f"Created source ({title=}, {uploader=})")
 
         return cls(
@@ -91,22 +130,28 @@ class YoutubeSource(discord.PCMVolumeTransformer):
             thumbnail_url=thumbnail_url,
         )
 
-
-
     @classmethod
-    def from_query(cls, url_or_query: str, requester: str) -> "YoutubeSource":
+    def from_query(cls, url_or_query: str, requester: str) -> YoutubeSource:
         with yt_dlp.YoutubeDL(YTDLP_OPTS) as ydl:
-            if url_or_query.startswith("http://") or url_or_query.startswith("https://"):
+            if url_or_query.startswith("http://") or url_or_query.startswith(
+                "https://"
+            ):
                 url = url_or_query
             else:
-                search_results = ydl.extract_info(f"ytsearch:{url_or_query} lyric", download=False)
-                if not search_results or "entries" not in search_results or len(search_results["entries"]) == 0:
-                    raise Exception(f"No search results found on YouTube for: {url_or_query}")
+                search_results = ydl.extract_info(
+                    f"ytsearch:{url_or_query} lyric", download=False
+                )
+                if (
+                    not search_results
+                    or "entries" not in search_results
+                    or len(search_results["entries"]) == 0
+                ):
+                    raise Exception(
+                        f"No search results found on YouTube for: {url_or_query}"
+                    )
                 url = search_results["entries"][0]["webpage_url"]
 
         return cls.from_url(url, requester)
-
-
 
     def build_yt_embed(self):
         embed = discord.Embed(

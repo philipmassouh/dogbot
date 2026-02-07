@@ -1,23 +1,52 @@
-# Dogbot 
+# Dogbot
 
-## Dogbot is a multipurpose Discord bot built for my personal convenience and use. 
+Dogbot is a personal multipurpose Discord bot.
 
-### Features:
-## Music
-- `!play <url>`: play music from youtube with 
-- manage the DJ:
-    - `!queue <url>`
-    - `!view_queue`
-    - `!leave`
-    - `!skip`
+## Commands
 
-## Dota
-- `!dota_counters <hero>`: retrieve counters
-- `!dota_wr <hero>`: retrieve winrate
+### Music
+- `!play <query-or-url>`
+- `!queue <query-or-url>`
+- `!view_queue`
+- `!skip`
+- `!leave`
 
-## More coming soon
-- reach out if you want to contribute/help
-    
+### Dota
+- `!dota_counters <hero>`
+- `!dota_wr <hero>`
+
+## Local setup (uv + Astral stack)
+
+1) Install system dependencies:
+
+- macOS: `brew install ffmpeg opus`
+- Debian/Ubuntu: `sudo apt-get update && sudo apt-get install -y ffmpeg libopus0`
+
+2) Install Python dependencies:
+
+```bash
+uv sync
+```
+
+3) Run the bot:
+
+```bash
+uv run python src/bot.py
+```
+
+## Dev commands
+
+```bash
+uv run ruff format .
+uv run ruff check . --fix
+uv run ty check
+```
+
+## Notes
+
+- Set `DOGBOT_TOKEN_DISCORD`, or place the token in a `secret` file at the repo root.
+- Music playback requires both `ffmpeg` and an available `opus` library.
+
 ![counters](https://github.com/philipmassouh/dogbot/blob/master/demo_images/counters.png)
 ![winrate](https://github.com/philipmassouh/dogbot/blob/master/demo_images/winrate.png)
 ![music](https://github.com/philipmassouh/dogbot/blob/master/demo_images/music.png)

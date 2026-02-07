@@ -15,7 +15,6 @@ warnings.filterwarnings("ignore")
 import os
 
 import matplotlib.pyplot as plt
-import seaborn as sns
 from fuzzywuzzy import process
 
 
@@ -88,7 +87,7 @@ class Dota(commands.Cog):
         ax.set_xlabel("Win Rate", color="#ffffff")
         ax.set_ylabel("Rank", color="#ffffff")
 
-        bar_x = max((bar.get_width() for bar in bars))
+        bar_x = max(bar.get_width() for bar in bars)
 
         for i, bar in enumerate(bars):
             value = data.iloc[i]
@@ -150,7 +149,7 @@ class Dota(commands.Cog):
                 .get("href")
                 .removeprefix("/heroes/")
             )
-            for row in table.find_all("tr")[1:]  # type: ignore
+            for row in table.find_all("tr")[1:]
         ]
 
         return counters

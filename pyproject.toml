@@ -1,0 +1,34 @@
+[project]
+name = "dogbot"
+version = "0.1.0"
+description = "Multipurpose personal Discord bot"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "boto3",
+  "beautifulsoup4",
+  "discord.py",
+  "fuzzywuzzy",
+  "loguru",
+  "matplotlib",
+  "pillow",
+  "pynacl",
+  "requests",
+  "static-frame",
+  "yt-dlp",
+]
+
+[dependency-groups]
+dev = [
+  "ruff",
+  "ty",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["F", "I", "B", "UP"]

@@ -1,14 +1,18 @@
-FROM python:3.12.1
+FROM python:3.12-slim
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     ffmpeg \
+    libopus0 \
     && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:0.5.30 /uv /uvx /bin/
 
 WORKDIR /usr/src/app
 
-COPY requirements.txt ./
-#TODO pin this version. pin everything in requirements aswe ll
-RUN pip install numpy
-RUN pip install --no-cache-dir -r requirements.txt
-COPY . .
-CMD ["python", "src/bot.py"]
+COPY pyproject.toml README.md ./
+RUN uv sync --no-dev
+
+COPY src ./src
+COPY demo_images ./demo_images
+
+CMD ["uv", "run", "python", "src/bot.py"]

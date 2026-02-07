@@ -3,7 +3,6 @@ import warnings
 import requests
 
 warnings.filterwarnings("ignore")
-import typing as tp
 
 from fuzzywuzzy import process
 
@@ -30,5 +29,5 @@ print("_" * 10)
 print("\n".join(map(str, list(dire.items()))))
 
 print("_" * 10)
-print(f"radiant: {sum(radiant.values())/len(radiant.values())}")
-print(f"dire: {sum(dire.values())/len(dire.values())}")
+print(f"radiant: {sum(radiant.values()) / len(radiant.values())}")
+print(f"dire: {sum(dire.values()) / len(dire.values())}")

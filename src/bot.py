@@ -1,20 +1,31 @@
-import discord
-import yt_dlp as youtube_dl
-from discord.ext import commands, tasks
+import json
+import os
+from pathlib import Path
+from typing import Any
 
 import boto3
+import discord
+import yt_dlp as youtube_dl
 from botocore.exceptions import ClientError
-import json
+from discord.ext import commands, tasks
 
 # Silence useless bug reports messages
-youtube_dl.utils.bug_reports_message = lambda: ""
+
+
+def _suppress_bug_reports(before: str = ";") -> str:
+    return ""
+
+
+youtube_dl.utils.bug_reports_message: Any = _suppress_bug_reports
+
 
 def get_secret_file(fp: str) -> str:
-    with open(fp, "r") as f:
+    with open(fp) as f:
         secret = f.readline().strip()
     return secret
 
-def get_secret_aws():
+
+def get_secret_aws() -> str:
     secret_name = "dogbot_token_discord"
     region_name = "us-west-1"
 
@@ -55,5 +66,13 @@ class MyBot(commands.Bot):
         print("Ready!")
 
 
+def get_discord_token() -> str:
+    if token := os.getenv("DOGBOT_TOKEN_DISCORD"):
+        return token
+
+    secret_path = Path(__file__).resolve().parents[1] / "secret"
+    return get_secret_file(str(secret_path))
+
+
 bot = MyBot()
-bot.run(get_secret_file("/Users/philipmassouh/src/dogbot/secret"))
+bot.run(get_discord_token())
