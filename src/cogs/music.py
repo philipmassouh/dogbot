@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import deque
-from ctypes.util import find_library
+from dataclasses import dataclass
 from datetime import timedelta
 
 import discord
@@ -37,54 +37,17 @@ CONSTANT_YTDLP_DURATION = "duration"
 CONSTANT_YTDLP_THUMBNAILS = "thumbnails"
 
 
-def _load_opus() -> None:
-    if discord.opus.is_loaded():
-        return
-
-    candidates = []
-    if detected := find_library("opus"):
-        candidates.append(detected)
-    candidates.extend(["libopus.so.0", "libopus.so", "libopus.dylib", "opus.dll"])
-
-    for candidate in candidates:
-        try:
-            discord.opus.load_opus(candidate)
-            logger.info(f"Loaded opus library: {candidate}")
-            return
-        except OSError:
-            continue
-
-    logger.warning(
-        "Could not load opus library. Install opus: brew install opus or apt-get install libopus0."
-    )
-
-
-_load_opus()
-
-
-class YoutubeSource(discord.PCMVolumeTransformer):
-    def __init__(
-        self,
-        source: discord.FFmpegPCMAudio,
-        title: str,
-        url: str,
-        display_url: str,
-        requester: str,
-        uploader_name: str,
-        uploader_url: str,
-        duration: timedelta,
-        thumbnail_url: str,
-        volume: float = 0.5,
-    ) -> None:
-        super().__init__(source, volume=volume)
-        self.title = title
-        self.url = url
-        self.display_url = display_url
-        self.requester = requester
-        self.uploader_name = uploader_name
-        self.uploader_url = uploader_url
-        self.duration = duration
-        self.thumbnail_url = thumbnail_url
+@dataclass
+class YoutubeSource:
+    source: discord.FFmpegOpusAudio
+    title: str
+    url: str
+    display_url: str
+    requester: str
+    uploader_name: str
+    uploader_url: str
+    duration: timedelta
+    thumbnail_url: str
 
     @classmethod
     def from_url(cls, requested_url: str, requester: str) -> YoutubeSource:
@@ -111,7 +74,7 @@ class YoutubeSource(discord.PCMVolumeTransformer):
             thumbnail_urls, key=lambda t: (t.get("width", 0), t.get("height", 0))
         )[CONSTANT_YTDLP_URL]
 
-        source = discord.FFmpegPCMAudio(
+        source = discord.FFmpegOpusAudio(
             url,
             before_options=FFMPEG_OPTS["before_options"],
             options=FFMPEG_OPTS["options"],
@@ -262,7 +225,7 @@ class Music(commands.Cog):
 
         if self.voice_client:
             await ctx.send(embed=song.build_yt_embed())
-            self.voice_client.play(song)
+            self.voice_client.play(song.source)
 
     def _is_playing(self) -> bool:
         return self.voice_client is not None and self.voice_client.is_playing()

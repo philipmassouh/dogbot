@@ -19,8 +19,8 @@ Dogbot is a personal multipurpose Discord bot.
 
 1) Install system dependencies:
 
-- macOS: `brew install ffmpeg opus`
-- Debian/Ubuntu: `sudo apt-get update && sudo apt-get install -y ffmpeg libopus0`
+- macOS: `brew install ffmpeg`
+- Debian/Ubuntu: `sudo apt-get update && sudo apt-get install -y ffmpeg`
 
 2) Install Python dependencies:
 
@@ -31,21 +31,21 @@ uv sync
 3) Run the bot:
 
 ```bash
-uv run python src/bot.py
+just run
 ```
 
 ## Dev commands
 
 ```bash
-uv run ruff format .
-uv run ruff check . --fix
-uv run ty check
+just fmt
+just lint
+just typecheck
 ```
 
 ## Notes
 
-- Set `DOGBOT_TOKEN_DISCORD`, or place the token in a `secret` file at the repo root.
-- Music playback requires both `ffmpeg` and an available `opus` library.
+- Set `DOGBOT_TOKEN_DISCORD` in `.env` (loaded by `just`) or export it in your shell.
+- Music playback requires `ffmpeg`.
 
 ![counters](https://github.com/philipmassouh/dogbot/blob/master/demo_images/counters.png)
 ![winrate](https://github.com/philipmassouh/dogbot/blob/master/demo_images/winrate.png)
